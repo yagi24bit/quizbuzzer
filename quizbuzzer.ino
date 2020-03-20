@@ -1,9 +1,13 @@
-#define PIN_LATCH_INV 2
-#define PIN_LATCH     3
-#define PIN_CLOCK     4
-#define PIN_INPUT     5
-#define PIN_OUTPUT    6
-#define PIN_RESET     8
+#define PIN_LATCH_INV   2
+#define PIN_LATCH       3
+#define PIN_CLOCK       4
+#define PIN_INPUT       5
+#define PIN_OUTPUT      6
+
+#define PIN_START       8   // B0
+#define PIN_CORRECT     9   // B1
+#define PIN_INCORRECT   10  // B2
+#define PIN_RESET       11  // B3
 
 unsigned short shiftIO(unsigned short output) {
 	unsigned short input = 0;
@@ -28,6 +32,9 @@ unsigned short shiftIO(unsigned short output) {
 	return ~input;
 }
 
+void playSound() {
+}
+
 void setup() {
 	Serial.begin(9600);
 
@@ -36,6 +43,10 @@ void setup() {
 	pinMode(PIN_CLOCK, OUTPUT); // CLOCK
 	pinMode(PIN_INPUT, INPUT_PULLUP); // ボタン入力
 	pinMode(PIN_OUTPUT, OUTPUT); // LED
+
+	pinMode(PIN_START, INPUT_PULLUP); // 出題
+	pinMode(PIN_CORRECT, INPUT_PULLUP); // 正解
+	pinMode(PIN_INCORRECT, INPUT_PULLUP); // 不正解
 	pinMode(PIN_RESET, INPUT_PULLUP); // リセット
 
 	digitalWrite(PIN_LATCH_INV, HIGH);
@@ -49,6 +60,8 @@ void setup() {
 void loop() {
 	unsigned short input_buttons = 0;
 	unsigned short output_buttons = 0;
+	unsigned long m_sound = millis();
+
 	int times = 0;
 	unsigned long m = millis();
 
@@ -56,14 +69,30 @@ void loop() {
 		unsigned short input_buttons_prev = input_buttons;
 		input_buttons = shiftIO(output_buttons) & 0xFF; // 暫定、とりあえず下 8 桁だけ
 
-		if(input_buttons  != input_buttons_prev) {
-			Serial.println(input_buttons | 0b10000000000000000, BIN);
-			if(output_buttons == 0) { output_buttons = input_buttons; }
+		if(millis() - m_sound > 500) {
+			// 出題者ボタン
+			unsigned short operator_buttons = ~PINB & 0xF;
+			if(operator_buttons) {
+				Serial.println(operator_buttons | 0b10000, BIN);
+				output_buttons = 0;
+				playSound();
+				m_sound = millis();
+				continue;
+			}
 		}
 
-		// リセット
-		if(digitalRead(PIN_RESET) == LOW) { output_buttons = 0; }
+		// 回答者ボタン
+		if(output_buttons == 0 && input_buttons != input_buttons_prev) {
+			playSound();
+			m_sound = millis();
+			output_buttons = input_buttons;
+		}
 
+		// 以下、デバッグメッセージ
+		// 回答者ボタン
+		if(input_buttons != input_buttons_prev) {
+			Serial.println(input_buttons | 0b10000000000000000, BIN);
+		}
 		// 処理速度計測 (暫定)
 		times++;
 		if(millis() - m > 1000) {
