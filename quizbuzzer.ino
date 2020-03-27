@@ -9,6 +9,11 @@
 #define PIN_INCORRECT   10  // B2
 #define PIN_RESET       11  // B3
 
+inline unsigned short rand_next(unsigned short rand) {
+	// 乱数もどき
+	return (rand >> 15) | (rand << 1);
+}
+
 unsigned short shiftIO(unsigned short output) {
 	unsigned short input = 0;
 
@@ -60,6 +65,7 @@ void setup() {
 void loop() {
 	unsigned short input_buttons = 0;
 	unsigned short output_buttons = 0;
+	unsigned short rand = 1;
 	unsigned long m_sound = millis();
 
 	int times = 0;
@@ -68,6 +74,7 @@ void loop() {
 	while(1) {
 		unsigned short input_buttons_prev = input_buttons;
 		input_buttons = shiftIO(output_buttons) & 0xFF; // 暫定、とりあえず下 8 桁だけ
+		rand = rand_next(rand);
 
 		if(millis() - m_sound > 500) {
 			// 出題者ボタン
@@ -86,7 +93,10 @@ void loop() {
 		if(output_buttons == 0 && input_buttons_d) {
 			playSound();
 			m_sound = millis();
-			output_buttons = input_buttons_d;
+			do {
+				output_buttons = input_buttons_d & rand; // 複数のボタンが押されている場合はどれか 1 つに絞る
+				rand = rand_next(rand);
+			} while(output_buttons == 0);
 		}
 
 		// 以下、デバッグメッセージ
