@@ -82,10 +82,11 @@ void loop() {
 		}
 
 		// 回答者ボタン
-		if(output_buttons == 0 && input_buttons != input_buttons_prev) {
+		unsigned short input_buttons_d = input_buttons & ~input_buttons_prev; // ボタンが押された瞬間のみ検知
+		if(output_buttons == 0 && input_buttons_d) {
 			playSound();
 			m_sound = millis();
-			output_buttons = input_buttons;
+			output_buttons = input_buttons_d;
 		}
 
 		// 以下、デバッグメッセージ
